@@ -2,8 +2,7 @@
 from datetime import datetime
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-import json
-import requests
+from airflow.operators.bash import BashOperator
 
 default_args ={
     'owner':'kelvin',
@@ -12,6 +11,8 @@ default_args ={
 
 # GET request to api
 def get_data():
+    import json
+    import requests
     res = requests.get('https://randomuser.me/api/')
     res_json = res.json()
     res_json = res_json['results'][0]
@@ -38,10 +39,13 @@ def format_data(res):
 
 
 def stream_data():
+    import json
     res = get_data()
     res = format_data(res)
     print(json.dumps(res, indent=3))
 
+def task2func():
+    print('this is task2')
 
 with DAG('user_automation',
          default_args=default_args,
@@ -50,7 +54,15 @@ with DAG('user_automation',
     
     streaming_task = PythonOperator(
         task_id='stream_data_from_api',
-        python_callable=stream_data
+        python_callable=stream_data #name of the python function
     )
 
-stream_data()
+    additonal_task = PythonOperator(
+        task_id = 'task2',
+        python_callable= task2func
+    )
+
+    hello = BashOperator(task_id="hello", bash_command="echo hello")
+# stream_data()
+
+streaming_task >> additonal_task >> hello
