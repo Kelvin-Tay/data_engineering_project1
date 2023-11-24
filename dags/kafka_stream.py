@@ -40,12 +40,28 @@ def format_data(res):
 
 def stream_data():
     import json
-    res = get_data()
-    res = format_data(res)
-    print(json.dumps(res, indent=3))
+    from kafka import KafkaProducer
+    import time
+    import logging
+    
+    # print(json.dumps(res, indent=3))
+    # straight away publish the publish the data using kafaProducer
+    # producer = KafkaProducer(bootstrap_servers=['localhost:9092'], max_block_ms=5000)
+    # change to ['broker:29092'] once the docker container is up due to the yaml file setting
+    producer = KafkaProducer(bootstrap_servers=['broker:29092'], max_block_ms=5000)
+    curr_time = time.time()
+    while True:
+        if time.time()> curr_time +60:
+            break
+        try:
+            res = get_data()
+            res = format_data(res)
+            producer.send('users_created', json.dumps(res).encode('utf-8'))
+        except Exception as e:
+            logging.error(f'An error occured: {e}')
+            continue
 
-def task2func():
-    print('this is task2')
+
 
 with DAG('user_automation',
          default_args=default_args,
@@ -57,12 +73,4 @@ with DAG('user_automation',
         python_callable=stream_data #name of the python function
     )
 
-    additonal_task = PythonOperator(
-        task_id = 'task2',
-        python_callable= task2func
-    )
-
-    hello = BashOperator(task_id="hello", bash_command="echo hello")
 # stream_data()
-
-streaming_task >> additonal_task >> hello
